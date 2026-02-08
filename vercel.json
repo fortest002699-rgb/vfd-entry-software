@@ -5,11 +5,6 @@
   "env": {
     "GENERATE_SOURCEMAP": "false"
   },
-  "functions": {
-    "api/**/*.js": {
-      "runtime": "@vercel/node@3"
-    }
-  },
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/$1" },
     { "src": "/static/(.*)", "dest": "/static/$1" },
