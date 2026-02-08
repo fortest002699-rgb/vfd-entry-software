@@ -4,28 +4,23 @@
  */
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  try {
-    let body = req.body;
-    if (!body) body = {};
-    if (typeof body === 'string') {
-      try {
-        body = JSON.parse(body);
-      } catch (e) {
-        // try stripping BOM and retry
-        try {
-          body = JSON.parse(body.replace(/^\uFEFF/, ''));
-        } catch (e2) {
-          console.error('body parse error', e2);
-          return res.status(400).json({ error: 'Invalid JSON body' });
-        }
-      }
-    }
 
-    const jobs = Array.isArray(body.jobs) ? body.jobs : [];
-    const sheetId = body.sheetId || process.env.GOOGLE_SHEET_ID || null;
-    return res.status(200).json({ success: true, received: jobs.length, sheetId, exampleJob: jobs[0] || null });
+  // Read the raw request body from the stream
+  try {
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    const raw = Buffer.concat(chunks);
+    const text = raw.toString('utf8');
+
+    // return a diagnostic response showing the raw length and a snippet
+    return res.status(200).json({
+      success: true,
+      rawLength: raw.length,
+      sample: text.slice(0, 500),
+      hexSample: raw.slice(0, Math.min(50, raw.length)).toString('hex')
+    });
   } catch (err) {
-    console.error('diagnostic handler error', err);
+    console.error('raw read error', err);
     return res.status(500).json({ error: String(err) });
   }
 };
