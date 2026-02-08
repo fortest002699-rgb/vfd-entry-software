@@ -92,7 +92,9 @@ Warranty does not cover physical damage, mishandling, improper installation, or 
         // ===== HEADER =====
         pdf.setFontSize(16);
         pdf.setFont('Helvetica', 'bold');
-        pdf.text('VFD REPORT', margin, yPosition, { align: 'center' });
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const centerX = pageWidth / 2;
+        pdf.text('VFD REPORT', centerX, yPosition, { align: 'center' });
         yPosition += 15;
 
         // Divider line
