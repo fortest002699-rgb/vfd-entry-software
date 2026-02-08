@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import Header from './components/Header';
+import LoginScreen from './components/LoginScreen';
 import ClientInfoForm from './components/ClientInfoForm';
 import TechnicianChecksForm from './components/TechnicianChecksForm';
 import JobDetailsBox from './components/JobDetailsBox';
@@ -18,6 +19,9 @@ import {
 } from 'firebase/firestore';
 
 function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    return localStorage.getItem('vfdAppLoggedIn') === 'true';
+  });
   const [jobs, setJobs] = useState([]);
   const [showClientForm, setShowClientForm] = useState(false);
   const [showTechForm, setShowTechForm] = useState(false);
@@ -26,6 +30,18 @@ function App() {
   const [editingJobId, setEditingJobId] = useState(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Handle login
+  const handleLogin = () => {
+    localStorage.setItem('vfdAppLoggedIn', 'true');
+    setIsLoggedIn(true);
+  };
+
+  // Handle logout
+  const handleLogout = () => {
+    localStorage.removeItem('vfdAppLoggedIn');
+    setIsLoggedIn(false);
+  };
 
   // Handle responsive breakpoint
   useEffect(() => {
@@ -227,12 +243,18 @@ function App() {
     );
   });
 
+  // Show login screen if not logged in
+  if (!isLoggedIn) {
+    return <LoginScreen onLogin={handleLogin} />;
+  }
+
   return (
     <div className="app-container">
       <Header
         onNewJob={handleNewJob}
         onSyncSheets={handleSyncToGoogleSheets}
         onRefresh={handleRefresh}
+        onLogout={handleLogout}
         isMobile={isMobile}
       />
 
