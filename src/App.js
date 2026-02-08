@@ -7,17 +7,21 @@ import JobDetailsBox from './components/JobDetailsBox';
 import PDFGeneratorModal from './components/PDFGeneratorModal';
 import GoogleSheetsSettings from './components/GoogleSheetsSettings';
 import { syncToGoogleSheets } from './utils/googleSheetsSync';
+import { db } from './firebase';
+import {
+  collection,
+  addDoc,
+  doc,
+  setDoc,
+  onSnapshot,
+  query,
+  orderBy,
+  serverTimestamp,
+  updateDoc
+} from 'firebase/firestore';
 
 function App() {
-  const [jobs, setJobs] = useState(() => {
-    try {
-      const s = localStorage.getItem('vfdJobs');
-      return s ? JSON.parse(s) : [];
-    } catch (e) {
-      console.error('Failed to parse stored jobs on init', e);
-      return [];
-    }
-  });
+  const [jobs, setJobs] = useState([]);
   const [showClientForm, setShowClientForm] = useState(false);
   const [showTechForm, setShowTechForm] = useState(false);
   const [currentJobId, setCurrentJobId] = useState(null);
@@ -43,6 +47,19 @@ function App() {
     localStorage.setItem('vfdJobs', JSON.stringify(jobs));
   }, [jobs]);
 
+  // Firestore realtime sync: subscribe to 'jobs' collection
+  useEffect(() => {
+    const q = query(collection(db, 'jobs'), orderBy('createdAt', 'desc'));
+    const unsub = onSnapshot(q, (snapshot) => {
+      const list = snapshot.docs.map(d => ({ _id: d.id, ...d.data() }));
+      setJobs(list);
+    }, (err) => {
+      console.error('Firestore onSnapshot error', err);
+    });
+
+    return () => unsub();
+  }, []);
+
   // Generate sequential job number
   const generateJobNumber = () => {
     let counter = parseInt(localStorage.getItem('vfdJobCounter') || '0', 10);
@@ -60,41 +77,74 @@ function App() {
   };
 
   // Handle save client info
-  const handleSaveClientInfo = (clientData) => {
-    const existingJobIndex = jobs.findIndex(j => j.jobId === currentJobId);
-    
-    if (existingJobIndex >= 0) {
-      // Update existing job
-      const updatedJobs = [...jobs];
-      updatedJobs[existingJobIndex] = {
-        ...updatedJobs[existingJobIndex],
-        ...clientData,
-        status: 'Received'
-      };
-      setJobs(updatedJobs);
-    } else {
-      // Create new job
-      const newJob = {
-        jobId: currentJobId,
-        ...clientData,
-        status: 'Received',
-        createdAt: new Date().toISOString()
-      };
-      setJobs([...jobs, newJob]);
+  const handleSaveClientInfo = async (clientData) => {
+    try {
+      // find if existing Firestore doc for this jobId
+      const existing = jobs.find(j => j.jobId === currentJobId);
+      if (existing && existing._id) {
+        const docRef = doc(db, 'jobs', existing._id);
+        await updateDoc(docRef, {
+          ...clientData,
+          status: 'Received'
+        });
+      } else {
+        // create new doc
+        const newDoc = {
+          jobId: currentJobId,
+          ...clientData,
+          status: 'Received',
+          createdAt: new Date().toISOString()
+        };
+        await addDoc(collection(db, 'jobs'), newDoc);
+      }
+    } catch (err) {
+      console.error('Failed to save client info to Firestore', err);
+      // Fallback to localStorage
+      const existingJobIndex = jobs.findIndex(j => j.jobId === currentJobId);
+      if (existingJobIndex >= 0) {
+        const updatedJobs = [...jobs];
+        updatedJobs[existingJobIndex] = {
+          ...updatedJobs[existingJobIndex],
+          ...clientData,
+          status: 'Received'
+        };
+        setJobs(updatedJobs);
+      } else {
+        const newJob = {
+          jobId: currentJobId,
+          ...clientData,
+          status: 'Received',
+          createdAt: new Date().toISOString()
+        };
+        setJobs([...jobs, newJob]);
+      }
     }
-    
+
     setShowClientForm(false);
   };
 
   // Handle save technician checks
   const handleSaveTechChecks = (techData) => {
-    const updatedJobs = jobs.map(job =>
-      job.jobId === currentJobId
-        ? { ...job, ...techData, status: 'Inspected' }
-        : job
-    );
-    setJobs(updatedJobs);
-    setShowTechForm(false);
+    (async () => {
+      try {
+        const existing = jobs.find(j => j.jobId === currentJobId);
+        if (existing && existing._id) {
+          const docRef = doc(db, 'jobs', existing._id);
+          await updateDoc(docRef, { ...techData, status: 'Inspected' });
+        } else {
+          // fallback: update local
+          const updatedJobs = jobs.map(job =>
+            job.jobId === currentJobId
+              ? { ...job, ...techData, status: 'Inspected' }
+              : job
+          );
+          setJobs(updatedJobs);
+        }
+      } catch (err) {
+        console.error('Failed to save tech checks to Firestore', err);
+      }
+      setShowTechForm(false);
+    })();
   };
 
   // Handle edit job
@@ -112,20 +162,39 @@ function App() {
 
   // Handle PDF save - update status and dispatch date
   const handlePDFSave = (reportData) => {
-    const updatedJobs = jobs.map(job =>
-      job.jobId === currentJobId
-        ? {
-            ...job,
+    (async () => {
+      try {
+        const existing = jobs.find(j => j.jobId === currentJobId);
+        if (existing && existing._id) {
+          const docRef = doc(db, 'jobs', existing._id);
+          await updateDoc(docRef, {
             status: 'Complete',
             dispatchDate: new Date().toISOString().split('T')[0],
             inspection_report: reportData.inspection_report || '',
             service_report: reportData.service_report || '',
             testing_report: reportData.testing_report || '',
             warranty_report: reportData.warranty_report || ''
-          }
-        : job
-    );
-    setJobs(updatedJobs);
+          });
+        } else {
+          const updatedJobs = jobs.map(job =>
+            job.jobId === currentJobId
+              ? {
+                  ...job,
+                  status: 'Complete',
+                  dispatchDate: new Date().toISOString().split('T')[0],
+                  inspection_report: reportData.inspection_report || '',
+                  service_report: reportData.service_report || '',
+                  testing_report: reportData.testing_report || '',
+                  warranty_report: reportData.warranty_report || ''
+                }
+              : job
+          );
+          setJobs(updatedJobs);
+        }
+      } catch (err) {
+        console.error('Failed to update PDF save to Firestore', err);
+      }
+    })();
   };
 
   // Handle open technician checks
