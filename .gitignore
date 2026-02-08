@@ -32,3 +32,6 @@ backend/service-account.json
 
 node_modules/
 .env*.local
+
+.vercel
+.env*.local

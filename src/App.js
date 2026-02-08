@@ -5,7 +5,6 @@ import ClientInfoForm from './components/ClientInfoForm';
 import TechnicianChecksForm from './components/TechnicianChecksForm';
 import JobDetailsBox from './components/JobDetailsBox';
 import PDFGeneratorModal from './components/PDFGeneratorModal';
-import GoogleSheetsSettings from './components/GoogleSheetsSettings';
 import { syncToGoogleSheets } from './utils/googleSheetsSync';
 import { db } from './firebase';
 import {
@@ -26,7 +25,6 @@ function App() {
   const [showPDFModal, setShowPDFModal] = useState(false);
   const [editingJobId, setEditingJobId] = useState(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const [showGoogleSheetsSettings, setShowGoogleSheetsSettings] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Handle responsive breakpoint
@@ -212,11 +210,6 @@ function App() {
     }
   };
 
-  // Handle open Google Sheets settings
-  const handleOpenGoogleSheetsSettings = () => {
-    setShowGoogleSheetsSettings(true);
-  };
-
   // Handle refresh
   const handleRefresh = () => {
     window.location.reload();
@@ -239,7 +232,6 @@ function App() {
       <Header
         onNewJob={handleNewJob}
         onSyncSheets={handleSyncToGoogleSheets}
-        onOpenSettings={handleOpenGoogleSheetsSettings}
         onRefresh={handleRefresh}
         isMobile={isMobile}
       />
@@ -289,10 +281,6 @@ function App() {
         />
       )}
 
-      <GoogleSheetsSettings
-        isOpen={showGoogleSheetsSettings}
-        onClose={() => setShowGoogleSheetsSettings(false)}
-      />
       {/* Jobs are visible in the main JobDetailsBox; no separate history modal */}
     </div>
   );

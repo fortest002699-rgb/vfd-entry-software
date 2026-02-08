@@ -104,7 +104,7 @@ module.exports = async (req, res) => {
     return;
   }
 
-  // Now perform Google Sheets append
+  // Now perform Google Sheets update/append
   try {
     const auth = new google.auth.GoogleAuth({
       credentials: serviceAccount,
@@ -121,7 +121,22 @@ module.exports = async (req, res) => {
 
     const sheetName = metadata.data.sheets[0].properties.title;
 
-    const values = (jobs || []).map(job => [
+    // Get all existing values to check for duplicates
+    let existingRows = [];
+    try {
+      const getResult = await sheetsClient.values.get({
+        auth,
+        spreadsheetId: sheetId,
+        range: `${sheetName}!A2:G1000`
+      });
+      existingRows = getResult.data.values || [];
+    } catch (err) {
+      // Sheet may be empty or other error, continue
+      console.log('Could not fetch existing rows:', err.message);
+    }
+
+    // Prepare data rows
+    const dataRows = (jobs || []).map(job => [
       job.jobNo || job.jobId || '',
       job.clientName || '',
       job.entryDate || '',
@@ -131,17 +146,70 @@ module.exports = async (req, res) => {
       job.dispatchDate || ''
     ]);
 
-    const result = await sheetsClient.values.append({
-      auth,
-      spreadsheetId: sheetId,
-      range: `${sheetName}!A1`,
-      valueInputOption: 'USER_ENTERED',
-      requestBody: { values }
-    });
+    // For each job, check if it exists and build updates
+    const requests = [];
+    const rowsToAppend = [];
+
+    for (const job of jobs) {
+      const jobNo = job.jobNo || job.jobId || '';
+      const newRow = [
+        jobNo,
+        job.clientName || '',
+        job.entryDate || '',
+        job.make || '',
+        job.modelNo || '',
+        job.serialNo || '',
+        job.dispatchDate || ''
+      ];
+
+      // Find if job already exists in sheet
+      const existingRowIndex = existingRows.findIndex(row => row[0] === jobNo);
+
+      if (existingRowIndex !== -1) {
+        // Update existing row
+        const rowNumber = existingRowIndex + 2; // +2 because rows start at 2 (row 1 is header)
+        requests.push({
+          updateRange: {
+            range: `${sheetName}!A${rowNumber}:G${rowNumber}`,
+            values: [newRow],
+            majorDimension: 'ROWS'
+          }
+        });
+      } else {
+        // Append as new row
+        rowsToAppend.push(newRow);
+      }
+    }
+
+    // Execute batch updates if any
+    if (requests.length > 0) {
+      const batchUpdate = {
+        data: requests,
+        valueInputOption: 'USER_ENTERED'
+      };
+      await sheetsClient.values.batchUpdate({
+        auth,
+        spreadsheetId: sheetId,
+        requestBody: batchUpdate
+      });
+    }
+
+    // Append new rows if any
+    let appendResult = null;
+    if (rowsToAppend.length > 0) {
+      appendResult = await sheetsClient.values.append({
+        auth,
+        spreadsheetId: sheetId,
+        range: `${sheetName}!A2`,
+        valueInputOption: 'USER_ENTERED',
+        requestBody: { values: rowsToAppend }
+      });
+    }
 
     res.status(200).json({
       success: true,
-      updates: result.data.updates || null
+      message: `Updated ${requests.length} rows, appended ${rowsToAppend.length} rows`,
+      updates: appendResult ? appendResult.data.updates : null
     });
   } catch (err) {
     console.error('Sync error:', err);
