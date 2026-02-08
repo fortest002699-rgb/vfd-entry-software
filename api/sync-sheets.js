@@ -169,11 +169,9 @@ module.exports = async (req, res) => {
         // Update existing row
         const rowNumber = existingRowIndex + 2; // +2 because rows start at 2 (row 1 is header)
         requests.push({
-          updateRange: {
-            range: `${sheetName}!A${rowNumber}:G${rowNumber}`,
-            values: [newRow],
-            majorDimension: 'ROWS'
-          }
+          range: `${sheetName}!A${rowNumber}:G${rowNumber}`,
+          values: [newRow],
+          majorDimension: 'ROWS'
         });
       } else {
         // Append as new row
