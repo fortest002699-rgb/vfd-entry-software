@@ -1,0 +1,6 @@
+{
+  "appId": "com.dastechnoservices.dts",
+  "appName": "DTS",
+  "webDir": "build",
+  "bundledWebRuntime": false
+}
