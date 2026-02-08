@@ -1,4 +1,10 @@
-const { google } = require('googleapis');
+let google;
+try {
+  google = require('googleapis').google;
+} catch (e) {
+  // will respond with clear message if missing at runtime
+  google = null;
+}
 
 /**
  * Vercel Serverless: /api/sync-sheets
@@ -30,6 +36,8 @@ module.exports = async (req, res) => {
         return res.status(500).json({ error: 'Invalid SERVICE_ACCOUNT_JSON' });
       }
     }
+
+    if (!google) return res.status(500).json({ error: 'googleapis module not available in runtime' });
 
     const jwt = new google.auth.JWT(
       serviceAccount.client_email,
