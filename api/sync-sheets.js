@@ -5,7 +5,22 @@
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   try {
-    const body = req.body || {};
+    let body = req.body;
+    if (!body) body = {};
+    if (typeof body === 'string') {
+      try {
+        body = JSON.parse(body);
+      } catch (e) {
+        // try stripping BOM and retry
+        try {
+          body = JSON.parse(body.replace(/^\uFEFF/, ''));
+        } catch (e2) {
+          console.error('body parse error', e2);
+          return res.status(400).json({ error: 'Invalid JSON body' });
+        }
+      }
+    }
+
     const jobs = Array.isArray(body.jobs) ? body.jobs : [];
     const sheetId = body.sheetId || process.env.GOOGLE_SHEET_ID || null;
     return res.status(200).json({ success: true, received: jobs.length, sheetId, exampleJob: jobs[0] || null });
