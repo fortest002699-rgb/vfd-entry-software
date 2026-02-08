@@ -7,7 +7,7 @@ const LoginScreen = ({ onLogin }) => {
   const [error, setError] = useState('');
 
   // Simple password - change this to whatever you want
-  const CORRECT_PASSWORD = 'vfd123';
+  const CORRECT_PASSWORD = 'vfd..@123';
 
   const handleSubmit = (e) => {
     e.preventDefault();
