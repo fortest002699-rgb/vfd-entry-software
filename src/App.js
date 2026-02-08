@@ -12,11 +12,9 @@ import {
   collection,
   addDoc,
   doc,
-  setDoc,
   onSnapshot,
   query,
   orderBy,
-  serverTimestamp,
   updateDoc
 } from 'firebase/firestore';
 
