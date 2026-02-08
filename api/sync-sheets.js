@@ -1,77 +1,17 @@
-let google;
-try {
-  google = require('googleapis').google;
-} catch (e) {
-  // will respond with clear message if missing at runtime
-  google = null;
-}
-
 /**
- * Vercel Serverless: /api/sync-sheets
- * Expects JSON POST: { jobs: [{ jobNo, clientName, entryDate, make, modelNo, serialNo, dispatchDate }, ...], sheetId }
+ * Temporary diagnostic handler: echoes incoming payload.
+ * Replaces full Google Sheets logic for initial verification.
  */
 module.exports = async (req, res) => {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   try {
-    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-
     const body = req.body || {};
     const jobs = Array.isArray(body.jobs) ? body.jobs : [];
-    const sheetId = body.sheetId || process.env.GOOGLE_SHEET_ID;
-
-    if (!sheetId) return res.status(400).json({ error: 'Missing sheetId' });
-    if (!jobs.length) return res.status(400).json({ error: 'No jobs to sync' });
-
-    // Parse service account JSON from env (supports raw JSON or base64)
-    let svc = process.env.SERVICE_ACCOUNT_JSON || process.env.SERVICE_ACCOUNT;
-    if (!svc) return res.status(500).json({ error: 'Service account not configured' });
-
-    let serviceAccount;
-    try {
-      serviceAccount = JSON.parse(svc);
-    } catch (err) {
-      // maybe base64
-      try {
-        serviceAccount = JSON.parse(Buffer.from(svc, 'base64').toString('utf8'));
-      } catch (err2) {
-        return res.status(500).json({ error: 'Invalid SERVICE_ACCOUNT_JSON' });
-      }
-    }
-
-    if (!google) return res.status(500).json({ error: 'googleapis module not available in runtime' });
-
-    const jwt = new google.auth.JWT(
-      serviceAccount.client_email,
-      null,
-      serviceAccount.private_key,
-      ['https://www.googleapis.com/auth/spreadsheets']
-    );
-
-    await jwt.authorize();
-    const sheets = google.sheets({ version: 'v4', auth: jwt });
-
-    // Prepare rows (headerless) — keep column order matching frontend expectations
-    const values = jobs.map(j => [
-      j.jobNo || j.jobId || '',
-      j.clientName || '',
-      j.entryDate || '',
-      j.make || '',
-      j.modelNo || '',
-      j.serialNo || '',
-      j.dispatchDate || ''
-    ]);
-
-    const appendRes = await sheets.spreadsheets.values.append({
-      spreadsheetId: sheetId,
-      range: 'A1',
-      valueInputOption: 'USER_ENTERED',
-      insertDataOption: 'INSERT_ROWS',
-      requestBody: { values }
-    });
-
-    return res.status(200).json({ success: true, updates: appendRes.data });
-  } catch (error) {
-    console.error('sync-sheets error:', error);
-    return res.status(500).json({ success: false, error: String(error) });
+    const sheetId = body.sheetId || process.env.GOOGLE_SHEET_ID || null;
+    return res.status(200).json({ success: true, received: jobs.length, sheetId, exampleJob: jobs[0] || null });
+  } catch (err) {
+    console.error('diagnostic handler error', err);
+    return res.status(500).json({ error: String(err) });
   }
 };
 const { google } = require('googleapis');
