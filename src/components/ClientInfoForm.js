@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 
 const ClientInfoForm = ({ jobId, initialData, onSave, onClose }) => {
+  const [unlocked, setUnlocked] = useState(false);
+  const [authError, setAuthError] = useState('');
+  const [authPass, setAuthPass] = useState('');
+
   const [formData, setFormData] = useState(
     initialData || {
       jobNo: jobId,
@@ -11,6 +15,9 @@ const ClientInfoForm = ({ jobId, initialData, onSave, onClose }) => {
       clientName: ''
     }
   );
+
+  // Use same admin password as app (update here if you change LoginScreen)
+  const ADMIN_PASSWORD = 'vfd..@123';
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -23,12 +30,18 @@ const ClientInfoForm = ({ jobId, initialData, onSave, onClose }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     
+    // Require unlock before saving
+    if (!unlocked) {
+      setAuthError('Please unlock client details first');
+      return;
+    }
+
     // Validation
     if (!formData.clientName.trim()) {
       alert('Please enter client name');
       return;
     }
-    
+
     onSave({
       jobId: jobId,
       jobNo: formData.jobNo,
@@ -40,6 +53,18 @@ const ClientInfoForm = ({ jobId, initialData, onSave, onClose }) => {
     });
   };
 
+  const handleUnlock = (e) => {
+    e.preventDefault();
+    if (authPass === ADMIN_PASSWORD) {
+      setUnlocked(true);
+      setAuthError('');
+      setAuthPass('');
+    } else {
+      setAuthError('Incorrect password');
+      setAuthPass('');
+    }
+  };
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -48,7 +73,30 @@ const ClientInfoForm = ({ jobId, initialData, onSave, onClose }) => {
           <button className="modal-close" onClick={onClose}>✕</button>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        {/* If not unlocked, show lock screen */}
+        {!unlocked && (
+          <div style={{ padding: 16 }}>
+            <p style={{ marginBottom: 8 }}>🔒 Client details are protected. Enter admin password to view or edit.</p>
+            <form onSubmit={handleUnlock}>
+              <input
+                type="password"
+                placeholder="Admin password"
+                value={authPass}
+                onChange={(e) => setAuthPass(e.target.value)}
+                style={{ padding: 8, width: '100%', marginBottom: 8 }}
+                autoFocus
+              />
+              {authError && <div style={{ color: 'red', marginBottom: 8 }}>{authError}</div>}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="btn btn-success" type="submit">Unlock</button>
+                <button type="button" className="btn btn-secondary" onClick={onClose}>Close</button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {unlocked && (
+          <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Job No. (Auto-generated)</label>
             <input
@@ -120,15 +168,16 @@ const ClientInfoForm = ({ jobId, initialData, onSave, onClose }) => {
             />
           </div>
 
-          <div className="form-buttons">
-            <button type="submit" className="btn btn-success">
-              💾 Save Client Info
-            </button>
-            <button type="button" className="btn btn-secondary" onClick={onClose}>
-              ✕ Cancel
-            </button>
-          </div>
-        </form>
+            <div className="form-buttons">
+              <button type="submit" className="btn btn-success">
+                💾 Save Client Info
+              </button>
+              <button type="button" className="btn btn-secondary" onClick={onClose}>
+                ✕ Cancel
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );
