@@ -16,8 +16,15 @@ const ClientInfoForm = ({ jobId, initialData, onSave, onClose }) => {
     }
   );
 
-  // Use same admin password as app (update here if you change LoginScreen)
-  const ADMIN_PASSWORD = 'vfd..@123';
+  // Compute expected admin password per job:
+  // - If serial number has last 3 chars, password = <last3>..@admin
+  // - Otherwise for new jobs, password = 'new..@admin'
+  const computeExpectedPassword = (serial) => {
+    if (!serial) return 'new..@admin';
+    const s = String(serial).trim();
+    if (s.length >= 3) return `${s.slice(-3)}..@admin`;
+    return 'new..@admin';
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -55,7 +62,9 @@ const ClientInfoForm = ({ jobId, initialData, onSave, onClose }) => {
 
   const handleUnlock = (e) => {
     e.preventDefault();
-    if (authPass === ADMIN_PASSWORD) {
+    const serialForCheck = formData.serialNo || (initialData && initialData.serialNo) || '';
+    const expected = computeExpectedPassword(serialForCheck);
+    if (authPass === expected) {
       setUnlocked(true);
       setAuthError('');
       setAuthPass('');

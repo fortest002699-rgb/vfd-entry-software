@@ -28,7 +28,7 @@ const JobDetailsBox = ({ jobs, onEdit, onPDF, onTechChecks }) => {
             <thead>
               <tr>
                 <th>Job No.</th>
-                <th>Client Name</th>
+                <th>Model No.</th>
                 <th>Serial No.</th>
                 <th>Status</th>
                 <th>Action</th>
@@ -38,7 +38,7 @@ const JobDetailsBox = ({ jobs, onEdit, onPDF, onTechChecks }) => {
               {jobs.map((job) => (
                 <tr key={job.jobId}>
                   <td>{job.jobNo || job.jobId}</td>
-                  <td>{job.clientName}</td>
+                  <td>{job.modelNo}</td>
                   <td>{job.serialNo}</td>
                   <td>
                     <span className={`status-badge ${getStatusBadgeClass(job.status)}`}>
