@@ -73,7 +73,14 @@ function App() {
   }, []);
 
   // Generate sequential job number
-  const generateJobNumber = () => {
+  // Preview next job number without committing
+  const getPreviewJobNumber = () => {
+    const counter = parseInt(localStorage.getItem('vfdJobCounter') || '0', 10);
+    return (counter + 1).toString();
+  };
+
+  // Reserve and commit job number (call when saving)
+  const reserveJobNumber = () => {
     let counter = parseInt(localStorage.getItem('vfdJobCounter') || '0', 10);
     counter += 1;
     localStorage.setItem('vfdJobCounter', counter.toString());
@@ -82,8 +89,9 @@ function App() {
 
   // Handle new job
   const handleNewJob = () => {
-    const newJobId = generateJobNumber();
-    setCurrentJobId(newJobId);
+    // show preview job number but do NOT commit it yet
+    const previewId = getPreviewJobNumber();
+    setCurrentJobId(previewId);
     setEditingJobId(null);
     setShowClientForm(true);
   };
@@ -92,7 +100,7 @@ function App() {
   const handleSaveClientInfo = async (clientData) => {
     try {
       // find if existing Firestore doc for this jobId
-      const existing = jobs.find(j => j.jobId === currentJobId);
+      let existing = jobs.find(j => j.jobId === currentJobId);
       if (existing && existing._id) {
         const docRef = doc(db, 'jobs', existing._id);
         await updateDoc(docRef, {
@@ -100,19 +108,26 @@ function App() {
           status: 'Received'
         });
       } else {
-        // create new doc
+        // commit a new job number (reserve) and create new doc
+        const committedJobId = reserveJobNumber();
         const newDoc = {
-          jobId: currentJobId,
+          jobId: committedJobId,
           ...clientData,
           status: 'Received',
           createdAt: new Date().toISOString()
         };
         await addDoc(collection(db, 'jobs'), newDoc);
+        // update currentJobId so UI reflects committed id
+        setCurrentJobId(committedJobId);
+        // refresh existing reference
+        existing = { jobId: committedJobId };
       }
     } catch (err) {
       console.error('Failed to save client info to Firestore', err);
       // Fallback to localStorage
-      const existingJobIndex = jobs.findIndex(j => j.jobId === currentJobId);
+      // fallback: try to reserve a job number locally and store
+      const committedJobId = reserveJobNumber();
+      const existingJobIndex = jobs.findIndex(j => j.jobId === committedJobId);
       if (existingJobIndex >= 0) {
         const updatedJobs = [...jobs];
         updatedJobs[existingJobIndex] = {
@@ -123,12 +138,13 @@ function App() {
         setJobs(updatedJobs);
       } else {
         const newJob = {
-          jobId: currentJobId,
+          jobId: committedJobId,
           ...clientData,
           status: 'Received',
           createdAt: new Date().toISOString()
         };
         setJobs([...jobs, newJob]);
+        setCurrentJobId(committedJobId);
       }
     }
 
