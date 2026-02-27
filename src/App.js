@@ -68,6 +68,15 @@ function App() {
     const unsub = onSnapshot(q, (snapshot) => {
       const list = snapshot.docs.map(d => ({ _id: d.id, ...d.data() }));
       setJobs(list);
+
+      // Auto-reset job counter if database is empty
+      if (list.length === 0) {
+        const counter = parseInt(localStorage.getItem('vfdJobCounter') || '0', 10);
+        if (counter > 0) {
+          console.log('📊 Database is empty, resetting job counter to 0');
+          localStorage.setItem('vfdJobCounter', '0');
+        }
+      }
     }, (err) => {
       console.error('Firestore onSnapshot error', err);
     });
