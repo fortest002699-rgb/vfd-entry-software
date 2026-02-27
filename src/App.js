@@ -43,24 +43,6 @@ function App() {
     setIsLoggedIn(false);
   };
 
-  // Clear all jobs (admin only)
-  const clearAllJobs = async () => {
-    const pwd = window.prompt('Enter admin password to clear all jobs:');
-    if (pwd !== 'vfd..@123') { alert('wrong password'); return; }
-    if (!window.confirm('This will permanently delete all jobs. Proceed?')) return;
-    try {
-      const snapshot = await db.collection('jobs').get();
-      const batch = db.batch();
-      snapshot.forEach(doc => batch.delete(doc.ref));
-      await batch.commit();
-      setJobs([]);
-      alert('All jobs deleted');
-    } catch (err) {
-      console.error('Error clearing jobs', err);
-      alert('Failed to clear jobs');
-    }
-  };
-
   // Handle responsive breakpoint
   useEffect(() => {
     const handleResize = () => {
@@ -292,7 +274,6 @@ function App() {
       <Header
         onNewJob={handleNewJob}
         onSyncSheets={handleSyncToGoogleSheets}
-        onClearJobs={clearAllJobs}
         onRefresh={handleRefresh}
         onLogout={handleLogout}
         isMobile={isMobile}

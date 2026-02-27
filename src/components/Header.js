@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Header = ({ onNewJob, onSyncSheets, onClearJobs, onRefresh, onLogout, isMobile }) => {
+const Header = ({ onNewJob, onSyncSheets, onRefresh, onLogout, isMobile }) => {
   return (
     <header className="header">
       <h1>🚀 VFD ENTRY SOFTWARE</h1>
@@ -10,9 +10,6 @@ const Header = ({ onNewJob, onSyncSheets, onClearJobs, onRefresh, onLogout, isMo
         </button>
         <button className="btn btn-success" onClick={onSyncSheets}>
           ☁️ Sync to Google Sheet
-        </button>
-        <button className="btn btn-warning" onClick={onClearJobs} title="Clear all jobs">
-          🗑️ Clear Jobs
         </button>
         <button className="btn btn-secondary" onClick={onRefresh}>
           🔄 Refresh
