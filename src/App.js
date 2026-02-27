@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './App.css';
 import Header from './components/Header';
 import LoginScreen from './components/LoginScreen';
+import PasswordModal from './components/PasswordModal';
 import ClientInfoForm from './components/ClientInfoForm';
 import TechnicianChecksForm from './components/TechnicianChecksForm';
 import JobDetailsBox from './components/JobDetailsBox';
@@ -27,6 +28,8 @@ function App() {
   const [showTechForm, setShowTechForm] = useState(false);
   const [currentJobId, setCurrentJobId] = useState(null);
   const [showPDFModal, setShowPDFModal] = useState(false);
+  const [showPDFPasswordModal, setShowPDFPasswordModal] = useState(false);
+  const [pdfJobIdToUnlock, setPdfJobIdToUnlock] = useState(null);
   const [editingJobId, setEditingJobId] = useState(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [searchQuery, setSearchQuery] = useState('');
@@ -184,13 +187,16 @@ function App() {
 
 // Handle PDF generation (password protected)
    const handleGeneratePDF = (jobId) => {
-     const promptPwd = window.prompt('Enter PDF password:');
-     if (promptPwd !== 'pdf..@admin') {
-       alert('Incorrect PDF password');
-       return;
-     }
-    setCurrentJobId(jobId);
+     setPdfJobIdToUnlock(jobId);
+     setShowPDFPasswordModal(true);
+   };
+
+  // Handle PDF password confirmation
+  const handlePDFPasswordConfirmed = () => {
+    setCurrentJobId(pdfJobIdToUnlock);
     setShowPDFModal(true);
+    setShowPDFPasswordModal(false);
+    setPdfJobIdToUnlock(null);
   };
 
   // Handle PDF save - update status and dispatch date
@@ -315,6 +321,18 @@ function App() {
           onTechChecks={handleOpenTechForm}
         />
       </main>
+
+      {showPDFPasswordModal && (
+        <PasswordModal
+          title="🔐 PDF Password"
+          correctPassword="pdf..@admin"
+          onSubmit={handlePDFPasswordConfirmed}
+          onCancel={() => {
+            setShowPDFPasswordModal(false);
+            setPdfJobIdToUnlock(null);
+          }}
+        />
+      )}
 
       {showPDFModal && (
         <PDFGeneratorModal
